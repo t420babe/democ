@@ -21,19 +21,25 @@ pub fn start() -> Result<(), JsValue> {
   let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
 
   let vert_source = r#"
-      attribute vec4 a_vertex_position;
+    attribute vec4 a_vertex_position;
+    attribute vec4 a_vertex_color;
 
-      uniform mat4 u_model_view_matrix;
-      uniform mat4 u_projection_matrix;
+    uniform mat4 u_model_view_matrix;
+    uniform mat4 u_projection_matrix;
 
-      void main() {
-        gl_Position = u_projection_matrix * u_model_view_matrix * a_vertex_position;
-      }
+    varying lowp vec4 v_color;
+
+    void main(void) {
+      gl_Position = u_projection_matrix * u_model_view_matrix * a_vertex_position;
+      v_color = a_vertex_color;
+    }
   "#;
 
   let frag_source = r#"
+    varying lowp vec4 v_color;
+
     void main() {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+      gl_FragColor = v_color;
     }
   "#;
   let shader_program = init_shader_program(&gl_context, &vert_source, &frag_source)?;
@@ -41,6 +47,11 @@ pub fn start() -> Result<(), JsValue> {
   attrib_locations.insert(
     "a_vertex_position".into(),
     gl_context.get_attrib_location(&shader_program, "a_vertex_position"),
+  );
+
+  attrib_locations.insert(
+    "a_vertex_color".into(),
+    gl_context.get_attrib_location(&shader_program, "a_vertex_color"),
   );
 
   let mut uniform_locations: HashMap<String, Option<WebGlUniformLocation>> = HashMap::new();
@@ -54,16 +65,84 @@ pub fn start() -> Result<(), JsValue> {
   );
 
   let program_info = ProgramInfo { program: shader_program, attrib_locations, uniform_locations };
-  let vertices_buffer = init_buffers(&gl_context)?;
-  draw_scene(&gl_context, &program_info, &vertices_buffer)?;
 
+  let mut buffers: HashMap<String, WebGlBuffer> = HashMap::new();
+  let vertices_buffer = init_buffers(&gl_context)?;
+  buffers.insert("vertices".into(), vertices_buffer);
+  let colors_buffer = init_color_buffer(&gl_context)?;
+  buffers.insert("colors".into(), colors_buffer);
+  draw_scene(&gl_context, &program_info, &buffers)?;
+
+  Ok(())
+}
+
+fn bind_buffer_to_a_vertex_position_attrib(
+  gl_context: &WebGl2RenderingContext,
+  program_info: &ProgramInfo,
+  buffers: &HashMap<String, WebGlBuffer>,
+) -> Result<(), JsValue> {
+  // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
+  let num_components = 2; // Pull out 2 values per iteration
+  let buffer_type = WebGl2RenderingContext::FLOAT; // The data buffer is a 32bit float
+  let normalize = false; // Do not normalize
+  let stride = 0; // How many bytes to get from one set of values to the next, 0 = use `buffer_type` and `num_components`
+  let offset = 0; // How many bytes inside the buffer to start from
+
+  gl_context
+    .bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffers.get(&"vertices".to_string()));
+  let a_vertex_position = (*program_info
+    .attrib_locations
+    .get(&"a_vertex_position".to_string())
+    .ok_or("Failed to get `a_vertex_position` attribute")?) as u32;
+
+  gl_context.vertex_attrib_pointer_with_i32(
+    a_vertex_position,
+    num_components,
+    buffer_type,
+    normalize,
+    stride,
+    offset,
+  );
+
+  gl_context.enable_vertex_attrib_array(a_vertex_position);
+  Ok(())
+}
+
+fn bind_buffer_to_a_vertex_color_attrib(
+  gl_context: &WebGl2RenderingContext,
+  program_info: &ProgramInfo,
+  buffers: &HashMap<String, WebGlBuffer>,
+) -> Result<(), JsValue> {
+  // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
+  let num_components = 4; // Pull out 2 values per iteration
+  let buffer_type = WebGl2RenderingContext::FLOAT; // The data buffer is a 32bit float
+  let normalize = false; // Do not normalize
+  let stride = 0; // How many bytes to get from one set of values to the next, 0 = use `buffer_type` and `num_components`
+  let offset = 0; // How many bytes inside the buffer to start from
+
+  gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffers.get(&"colors".to_string()));
+  let a_vertex_color = (*program_info
+    .attrib_locations
+    .get(&"a_vertex_color".to_string())
+    .ok_or("Failed to get `a_vertex_color` attribute")?) as u32;
+
+  gl_context.vertex_attrib_pointer_with_i32(
+    a_vertex_color,
+    num_components,
+    buffer_type,
+    normalize,
+    stride,
+    offset,
+  );
+
+  gl_context.enable_vertex_attrib_array(a_vertex_color);
   Ok(())
 }
 
 pub fn draw_scene(
   gl_context: &WebGl2RenderingContext,
   program_info: &ProgramInfo,
-  vertices_buffer: &WebGlBuffer,
+  buffers: &HashMap<String, WebGlBuffer>,
 ) -> Result<(), JsValue> {
   gl_context.clear_color(1.0, 0.5, 0.5, 1.0);
   // gl_context.clear_depth(0.0);
@@ -96,29 +175,11 @@ pub fn draw_scene(
   // (destination matrix, matrix to translate, amount to translate)
   mat4::translate(&mut model_view_matrix, &model_view_matrix_clone, &[-0.0, 0.0, -6.0]);
 
+  /* BEGIN */
   // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
-  let num_components = 2; // Pull out 2 values per iteration
-  let buffer_type = WebGl2RenderingContext::FLOAT; // The data buffer is a 32bit float
-  let normalize = false; // Do not normalize
-  let stride = 0; // How many bytes to get from one set of values to the next, 0 = use `buffer_type` and `num_components`
-  let offset = 0; // How many bytes inside the buffer to start from
-
-  gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&vertices_buffer));
-  let a_vertex_position = (*program_info
-    .attrib_locations
-    .get(&"a_vertex_position".to_string())
-    .ok_or("Failed to get `a_vertex_position` attribute")?) as u32;
-
-  gl_context.vertex_attrib_pointer_with_i32(
-    a_vertex_position,
-    num_components,
-    buffer_type,
-    normalize,
-    stride,
-    offset,
-  );
-
-  gl_context.enable_vertex_attrib_array(a_vertex_position);
+  bind_buffer_to_a_vertex_position_attrib(&gl_context, &program_info, &buffers)?;
+  bind_buffer_to_a_vertex_color_attrib(&gl_context, &program_info, &buffers)?;
+  /* END */
 
   // Tell WebGl to use our program when drawing
   gl_context.use_program(Some(&program_info.program));
@@ -138,6 +199,7 @@ pub fn draw_scene(
   );
 
   let vertex_count = 4;
+  let offset = 0; // How many bytes inside the buffer to start from
   gl_context.draw_arrays(WebGl2RenderingContext::TRIANGLE_STRIP, offset, vertex_count);
 
   Ok(())
@@ -165,6 +227,33 @@ pub fn init_buffers(gl_context: &WebGl2RenderingContext) -> Result<WebGlBuffer, 
   }
 
   Ok(vertices_buffer)
+}
+
+pub fn init_color_buffer(gl_context: &WebGl2RenderingContext) -> Result<WebGlBuffer, String> {
+  // Create a buffer for the square's color
+  let colors_buffer = gl_context.create_buffer().ok_or("Failed to create position buffer")?;
+
+  // Select the `buffer` as the on to apply buffer operations from here on out
+  gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&colors_buffer));
+
+  // Create an array of vertices for the square
+  let colors: [f32; 16] = [
+    1.0, 1.0, 1.0, 1.0, // white
+    1.0, 0.0, 0.0, 1.0, // red
+    0.0, 1.0, 0.0, 1.0, // green
+    0.0, 0.0, 1.0, 1.0, // blue
+  ];
+
+  unsafe {
+    let colors_array = js_sys::Float32Array::view(&colors);
+    gl_context.buffer_data_with_array_buffer_view(
+      WebGl2RenderingContext::ARRAY_BUFFER,
+      &colors_array,
+      WebGl2RenderingContext::STATIC_DRAW,
+    );
+  }
+
+  Ok(colors_buffer)
 }
 
 pub fn init_shader_program(
