@@ -1,0 +1,8 @@
+/target
+/node_modules
+/pkg
+Cargo.lock
+package-lock.json
+*.bk
+*.swp
+.DS_Store
