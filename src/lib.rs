@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 
+pub mod buffer_attrib;
 pub mod buffers;
 pub mod program_info;
+pub use buffer_attrib::BufferAttrib;
 pub use program_info::ProgramInfo;
 
 #[wasm_bindgen(start)]
@@ -22,74 +24,6 @@ pub fn start() -> Result<(), JsValue> {
 
   draw_scene(&gl_context, &program_info, &buffers)?;
 
-  Ok(())
-}
-
-fn bind_buffer_to_a_vertex_position_attrib(
-  gl_context: &WebGl2RenderingContext,
-  program_info: &ProgramInfo,
-  buffers: &HashMap<String, WebGlBuffer>,
-) -> Result<(), JsValue> {
-  // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
-  let num_components = 2; // Pull out 2 values per iteration
-  let buffer_type = WebGl2RenderingContext::FLOAT; // The data buffer is a 32bit float
-  let normalize = false; // Do not normalize
-  let stride = 0; // How many bytes to get from one set of values to the next, 0 = use `buffer_type` and `num_components`
-  let offset = 0; // How many bytes inside the buffer to start from
-
-  gl_context
-    .bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffers.get(&"vertices".to_string()));
-
-  let a_vertex_position =
-    (*program_info.attrib_locations.get(&"a_vertex_position".to_string()).ok_or({
-      let msg = "Failed to get `a_vertex_position` attribute";
-      console::log_1(&msg.into());
-      msg
-    })?) as u32;
-
-  gl_context.vertex_attrib_pointer_with_i32(
-    a_vertex_position,
-    num_components,
-    buffer_type,
-    normalize,
-    stride,
-    offset,
-  );
-
-  gl_context.enable_vertex_attrib_array(a_vertex_position);
-  Ok(())
-}
-
-fn bind_buffer_to_a_vertex_color_attrib(
-  gl_context: &WebGl2RenderingContext,
-  program_info: &ProgramInfo,
-  buffers: &HashMap<String, WebGlBuffer>,
-) -> Result<(), JsValue> {
-  // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
-  let num_components = 4; // Pull out 2 values per iteration
-  let buffer_type = WebGl2RenderingContext::FLOAT; // The data buffer is a 32bit float
-  let normalize = false; // Do not normalize
-  let stride = 0; // How many bytes to get from one set of values to the next, 0 = use `buffer_type` and `num_components`
-  let offset = 0; // How many bytes inside the buffer to start from
-
-  gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffers.get(&"colors".to_string()));
-  let a_vertex_color =
-    (*program_info.attrib_locations.get(&"a_vertex_color".to_string()).ok_or({
-      let msg = "Failed to get `a_vertex_color` attribute";
-      console::log_1(&msg.into());
-      msg
-    })?) as u32;
-
-  gl_context.vertex_attrib_pointer_with_i32(
-    a_vertex_color,
-    num_components,
-    buffer_type,
-    normalize,
-    stride,
-    offset,
-  );
-
-  gl_context.enable_vertex_attrib_array(a_vertex_color);
   Ok(())
 }
 
@@ -135,8 +69,54 @@ pub fn draw_scene(
 
   /* BEGIN */
   // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
-  bind_buffer_to_a_vertex_position_attrib(&gl_context, &program_info, &buffers)?;
-  bind_buffer_to_a_vertex_color_attrib(&gl_context, &program_info, &buffers)?;
+  let a_vertex_position =
+    (*program_info.attrib_locations.get(&"a_vertex_position".to_string()).ok_or({
+      let msg = "Failed to get `a_vertex_position` attribute";
+      console::log_1(&msg.into());
+      msg
+    })?) as u32;
+
+  let a_vertex_position_buffer_attrib = BufferAttrib {
+    name: "vertices".into(),
+    buffer: buffers.get(&"vertices".to_string()).ok_or({
+      let msg = "Failed to get `a_vertex_position` attribute";
+      console::log_1(&msg.into());
+      msg
+    })?,
+    target: WebGl2RenderingContext::ARRAY_BUFFER,
+    num_components: 2,
+    buffer_type: WebGl2RenderingContext::FLOAT,
+    normalize: false,
+    stride: 0,
+    offset: 0,
+  };
+  buffer_attrib::bind_buffer_to_attrib(
+    &gl_context,
+    &a_vertex_position_buffer_attrib,
+    a_vertex_position,
+  )?;
+
+  let a_vertex_color =
+    (*program_info.attrib_locations.get(&"a_vertex_color".to_string()).ok_or({
+      let msg = "Failed to get `a_vertex_color` attribute";
+      console::log_1(&msg.into());
+      msg
+    })?) as u32;
+  let a_vertex_color_buffer_attrib = BufferAttrib {
+    name: "colors".into(),
+    buffer: buffers.get(&"colors".to_string()).ok_or({
+      let msg = "Failed to get `a_vertex_color` attribute";
+      console::log_1(&msg.into());
+      msg
+    })?,
+    target: WebGl2RenderingContext::ARRAY_BUFFER,
+    num_components: 4,
+    buffer_type: WebGl2RenderingContext::FLOAT,
+    normalize: false,
+    stride: 0,
+    offset: 0,
+  };
+  buffer_attrib::bind_buffer_to_attrib(&gl_context, &a_vertex_color_buffer_attrib, a_vertex_color)?;
   /* END */
 
   // Tell WebGl to use our program when drawing
