@@ -3,12 +3,11 @@ use std::collections::HashMap;
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 
-pub mod buffer_attrib;
-pub mod buffers;
-pub mod program_info;
-pub(crate) mod utils;
-pub use buffer_attrib::BufferAttrib;
-pub use program_info::ProgramInfo;
+mod buffer_attrib;
+mod buffers;
+mod program_info;
+mod utils;
+use crate::{buffer_attrib::BufferAttrib, program_info::ProgramInfo};
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
@@ -42,33 +41,10 @@ pub fn draw_scene(
   gl_context
     .clear(WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT);
 
-  // Create a perspective matrix, a special matrix that is used to simulate the distortion of perspective in a camera.
-  // Our field of view is 45 degrees, which a width/height ratio that matches the display size of the canvas and we
-  // only want to see objects between 0.1 and 100.0 units away from the camera
-  let field_of_view = 45.0 * std::f32::consts::PI / 180.0;
-  let canvas: web_sys::HtmlCanvasElement = gl_context
-    .canvas()
-    .ok_or({
-      let msg = "Failed to get canvas on draw";
-      console::log_1(&msg.into());
-      msg
-    })?
-    .dyn_into::<web_sys::HtmlCanvasElement>()?;
-  let aspect = (canvas.client_width() / canvas.client_height()) as f32;
-  let z_near = 0.1;
-  let z_far = 100.0;
-  let mut projection_matrix: [f32; 16] = mat4::new_identity();
-  mat4::perspective(&mut projection_matrix, &field_of_view, &aspect, &z_near, &z_far);
+  // Projection and model view matrices
+  let projection_matrix = create_perspective_matrix(&gl_context)?;
+  let model_view_matrix = create_model_view_matrix();
 
-  // Set the drawing position to the "identity", which is the center of the scene
-  let mut model_view_matrix: [f32; 16] = mat4::new_identity();
-  let model_view_matrix_clone: [f32; 16] = model_view_matrix.clone();
-
-  // Move the drawing position to where we want to start drawing the square
-  // (destination matrix, matrix to translate, amount to translate)
-  mat4::translate(&mut model_view_matrix, &model_view_matrix_clone, &[-0.0, 0.0, -6.0]);
-
-  /* BEGIN */
   // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
   let a_vertex_position =
     (*program_info.attrib_locations.get(&"a_vertex_position".to_string()).ok_or({
@@ -118,7 +94,6 @@ pub fn draw_scene(
     offset: 0,
   };
   buffer_attrib::bind_buffer_to_attrib(&gl_context, &a_vertex_color_buffer_attrib, a_vertex_color)?;
-  /* END */
 
   // Tell WebGl to use our program when drawing
   gl_context.use_program(Some(&program_info.program));
@@ -142,4 +117,34 @@ pub fn draw_scene(
   gl_context.draw_arrays(WebGl2RenderingContext::TRIANGLE_STRIP, offset, vertex_count);
 
   Ok(())
+}
+
+fn create_perspective_matrix(gl_context: &WebGl2RenderingContext) -> Result<[f32; 16], JsValue> {
+  // Create a perspective matrix, a special matrix that is used to simulate the distortion of perspective in a camera.
+  // Our field of view is 45 degrees, which a width/height ratio that matches the display size of the canvas and we
+  // only want to see objects between 0.1 and 100.0 units away from the camera
+  let field_of_view = 45.0 * std::f32::consts::PI / 180.0;
+  let canvas: web_sys::HtmlCanvasElement = gl_context
+    .canvas()
+    .ok_or({
+      let msg = "Failed to get canvas on draw";
+      console::log_1(&msg.into());
+      msg
+    })?
+    .dyn_into::<web_sys::HtmlCanvasElement>()?;
+  let aspect = (canvas.client_width() / canvas.client_height()) as f32;
+  let z_near = 0.1;
+  let z_far = 100.0;
+  let mut projection_matrix: [f32; 16] = mat4::new_identity();
+  Ok(*mat4::perspective(&mut projection_matrix, &field_of_view, &aspect, &z_near, &z_far))
+}
+
+fn create_model_view_matrix() -> [f32; 16] {
+  // Set the drawing position to the "identity", which is the center of the scene
+  let mut model_view_matrix: [f32; 16] = mat4::new_identity();
+  let model_view_matrix_clone: [f32; 16] = model_view_matrix.clone();
+
+  // Move the drawing position to where we want to start drawing the square
+  // (destination matrix, matrix to translate, amount to translate)
+  *mat4::translate(&mut model_view_matrix, &model_view_matrix_clone, &[-0.0, 0.0, -6.0])
 }

@@ -12,7 +12,7 @@ pub struct BufferAttrib<'a> {
   pub offset: i32,
 }
 
-pub fn bind_buffer_to_attrib(
+pub(crate) fn bind_buffer_to_attrib(
   gl_context: &WebGl2RenderingContext,
   buffer_attrib: &BufferAttrib,
   attribute: u32,

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 
-pub fn make_buffers(
+pub(crate) fn make_buffers(
   gl_context: &WebGl2RenderingContext,
 ) -> Result<HashMap<String, WebGlBuffer>, JsValue> {
   let mut buffers: HashMap<String, WebGlBuffer> = HashMap::new();

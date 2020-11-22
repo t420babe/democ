@@ -32,7 +32,7 @@ pub struct ProgramInfo {
 }
 
 impl ProgramInfo {
-  pub fn new(gl_context: &WebGl2RenderingContext) -> Result<Self, JsValue> {
+  pub(crate) fn new(gl_context: &WebGl2RenderingContext) -> Result<Self, JsValue> {
     let shader_program = init_shader_program(&gl_context)?;
     let mut attrib_locations: HashMap<String, i32> = HashMap::new();
 
