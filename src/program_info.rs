@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
+use web_sys::{console, WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 const VERT_SOURCE: &str = r#"
     attribute vec4 a_vertex_position;
@@ -66,8 +66,11 @@ fn init_shader_program(gl_context: &WebGl2RenderingContext) -> Result<WebGlProgr
   let frag_shader = load_shader(gl_context, FRAG_SOURCE, WebGl2RenderingContext::FRAGMENT_SHADER)?;
 
   // Create the shader program
-  let shader_program =
-    gl_context.create_program().ok_or_else(|| String::from("Unable to create shader object"))?;
+  let shader_program = gl_context.create_program().ok_or_else(|| {
+    let msg = "Unable to create shader object";
+    console::log_1(&msg.into());
+    msg.to_string()
+  })?;
   gl_context.attach_shader(&shader_program, &vert_shader);
   gl_context.attach_shader(&shader_program, &frag_shader);
   gl_context.link_program(&shader_program);
@@ -79,11 +82,11 @@ fn init_shader_program(gl_context: &WebGl2RenderingContext) -> Result<WebGlProgr
   {
     Ok(shader_program)
   } else {
-    Err(
-      gl_context
-        .get_program_info_log(&shader_program)
-        .unwrap_or_else(|| String::from("Unknown error creating program object")),
-    )
+    Err(gl_context.get_program_info_log(&shader_program).unwrap_or_else(|| {
+      let msg = "Unknown error creating program object";
+      console::log_1(&msg.into());
+      msg.to_string()
+    }))
   }
 }
 
@@ -92,9 +95,11 @@ fn load_shader(
   shader_source: &str,
   shader_type: u32,
 ) -> Result<WebGlShader, String> {
-  let shader = gl_context
-    .create_shader(shader_type)
-    .ok_or_else(|| String::from("Unable to create shader object"))?;
+  let shader = gl_context.create_shader(shader_type).ok_or_else(|| {
+    let msg = "Unable to create shader object";
+    console::log_1(&msg.into());
+    msg.to_string()
+  })?;
   gl_context.shader_source(&shader, shader_source);
   gl_context.compile_shader(&shader);
 
@@ -105,10 +110,10 @@ fn load_shader(
   {
     Ok(shader)
   } else {
-    Err(
-      gl_context
-        .get_shader_info_log(&shader)
-        .unwrap_or_else(|| String::from("Unknown error creating shader")),
-    )
+    Err(gl_context.get_shader_info_log(&shader).unwrap_or_else(|| {
+      let msg = "Unknown error creating shader";
+      console::log_1(&msg.into());
+      msg.to_string()
+    }))
   }
 }

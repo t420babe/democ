@@ -1,7 +1,7 @@
 use mat4;
 use std::collections::HashMap;
 use wasm_bindgen::{prelude::*, JsCast};
-use web_sys::{WebGl2RenderingContext, WebGlBuffer};
+use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 
 pub mod program_info;
 pub use program_info::ProgramInfo;
@@ -41,10 +41,13 @@ fn bind_buffer_to_a_vertex_position_attrib(
 
   gl_context
     .bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffers.get(&"vertices".to_string()));
-  let a_vertex_position = (*program_info
-    .attrib_locations
-    .get(&"a_vertex_position".to_string())
-    .ok_or("Failed to get `a_vertex_position` attribute")?) as u32;
+
+  let a_vertex_position =
+    (*program_info.attrib_locations.get(&"a_vertex_position".to_string()).ok_or({
+      let msg = "Failed to get `a_vertex_position` attribute";
+      console::log_1(&msg.into());
+      msg
+    })?) as u32;
 
   gl_context.vertex_attrib_pointer_with_i32(
     a_vertex_position,
@@ -72,10 +75,12 @@ fn bind_buffer_to_a_vertex_color_attrib(
   let offset = 0; // How many bytes inside the buffer to start from
 
   gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, buffers.get(&"colors".to_string()));
-  let a_vertex_color = (*program_info
-    .attrib_locations
-    .get(&"a_vertex_color".to_string())
-    .ok_or("Failed to get `a_vertex_color` attribute")?) as u32;
+  let a_vertex_color =
+    (*program_info.attrib_locations.get(&"a_vertex_color".to_string()).ok_or({
+      let msg = "Failed to get `a_vertex_color` attribute";
+      console::log_1(&msg.into());
+      msg
+    })?) as u32;
 
   gl_context.vertex_attrib_pointer_with_i32(
     a_vertex_color,
@@ -110,7 +115,11 @@ pub fn draw_scene(
   let field_of_view = 45.0 * std::f32::consts::PI / 180.0;
   let canvas: web_sys::HtmlCanvasElement = gl_context
     .canvas()
-    .ok_or("Failed to get canvas on draw")?
+    .ok_or({
+      let msg = "Failed to get canvas on draw";
+      console::log_1(&msg.into());
+      msg
+    })?
     .dyn_into::<web_sys::HtmlCanvasElement>()?;
   let aspect = (canvas.client_width() / canvas.client_height()) as f32;
   let z_near = 0.1;
@@ -158,7 +167,11 @@ pub fn draw_scene(
 
 pub fn init_buffers(gl_context: &WebGl2RenderingContext) -> Result<WebGlBuffer, String> {
   // Create a buffer for the square's positions
-  let vertices_buffer = gl_context.create_buffer().ok_or("Failed to create position buffer")?;
+  let vertices_buffer = gl_context.create_buffer().ok_or({
+    let msg = "Failed to create position buffer";
+    console::log_1(&msg.into());
+    msg
+  })?;
 
   // Select the `vertices_buffer` as the on to apply buffer operations from here on out
   gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&vertices_buffer));
@@ -182,7 +195,11 @@ pub fn init_buffers(gl_context: &WebGl2RenderingContext) -> Result<WebGlBuffer, 
 
 pub fn init_color_buffer(gl_context: &WebGl2RenderingContext) -> Result<WebGlBuffer, String> {
   // Create a buffer for the square's color
-  let colors_buffer = gl_context.create_buffer().ok_or("Failed to create position buffer")?;
+  let colors_buffer = gl_context.create_buffer().ok_or({
+    let msg = "Failed to create position buffer";
+    console::log_1(&msg.into());
+    msg
+  })?;
 
   // Select the `buffer` as the on to apply buffer operations from here on out
   gl_context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&colors_buffer));

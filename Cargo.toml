@@ -15,6 +15,7 @@ mat4 = "0.2.1"
 [dependencies.web-sys]
 version = "0.3.45"
 features = [
+  'console',
   'Document',
   'Element',
   'HtmlCanvasElement',
