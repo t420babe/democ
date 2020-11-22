@@ -6,6 +6,7 @@ use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 pub mod buffer_attrib;
 pub mod buffers;
 pub mod program_info;
+pub(crate) mod utils;
 pub use buffer_attrib::BufferAttrib;
 pub use program_info::ProgramInfo;
 
