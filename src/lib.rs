@@ -1,4 +1,4 @@
-use mat4;
+use nalgebra_glm;
 use std::collections::HashMap;
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
@@ -7,25 +7,7 @@ mod buffer_attrib;
 mod buffers;
 mod program_info;
 mod utils;
-use crate::{buffer_attrib::BufferAttrib, program_info::ProgramInfo};
-
-#[wasm_bindgen(start)]
-pub fn start() -> Result<(), JsValue> {
-  let document = web_sys::window().unwrap().document().unwrap();
-
-  let canvas = document.get_element_by_id("canvas").unwrap();
-  let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
-
-  let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
-
-  let program_info = ProgramInfo::new(&gl_context)?;
-
-  let buffers = buffers::make_buffers(&gl_context)?;
-
-  draw_scene(&gl_context, &program_info, &buffers)?;
-
-  Ok(())
-}
+use crate::{buffer_attrib::BufferAttrib, program_info::ProgramInfo, utils::*};
 
 pub fn draw_scene(
   gl_context: &WebGl2RenderingContext,
@@ -43,7 +25,7 @@ pub fn draw_scene(
 
   // Projection and model view matrices
   let projection_matrix = create_perspective_matrix(&gl_context)?;
-  let model_view_matrix = create_model_view_matrix();
+  let model_view_matrix = create_model_view_matrix(0.5);
 
   // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
   let a_vertex_position =
@@ -135,16 +117,34 @@ fn create_perspective_matrix(gl_context: &WebGl2RenderingContext) -> Result<[f32
   let aspect = (canvas.client_width() / canvas.client_height()) as f32;
   let z_near = 0.1;
   let z_far = 100.0;
-  let mut projection_matrix: [f32; 16] = mat4::new_identity();
-  Ok(*mat4::perspective(&mut projection_matrix, &field_of_view, &aspect, &z_near, &z_far))
+  let projection_matrix = nalgebra_glm::perspective(aspect, field_of_view, z_near, z_far);
+  Ok(mat4_to_f32_16(projection_matrix))
 }
 
-fn create_model_view_matrix() -> [f32; 16] {
-  // Set the drawing position to the "identity", which is the center of the scene
-  let mut model_view_matrix: [f32; 16] = mat4::new_identity();
-  let model_view_matrix_clone: [f32; 16] = model_view_matrix.clone();
+/// Rotate the square
+fn create_model_view_matrix(angle: f32) -> [f32; 16] {
+  let model_view_matrix = nalgebra_glm::identity();
+  let translation_vector = nalgebra_glm::vec3(0.0, 0.0, -6.0);
+  let translated_matrix = nalgebra_glm::translate(&model_view_matrix, &translation_vector);
+  let rotation_vector = nalgebra_glm::vec3(0.0, 0.0, 1.0);
+  let rotated_matrix = nalgebra_glm::rotate(&translated_matrix, angle, &rotation_vector);
+  mat4_to_f32_16(rotated_matrix)
+}
 
-  // Move the drawing position to where we want to start drawing the square
-  // (destination matrix, matrix to translate, amount to translate)
-  *mat4::translate(&mut model_view_matrix, &model_view_matrix_clone, &[-0.0, 0.0, -6.0])
+#[wasm_bindgen(start)]
+pub fn start() -> Result<(), JsValue> {
+  let document = web_sys::window().unwrap().document().unwrap();
+
+  let canvas = document.get_element_by_id("canvas").unwrap();
+  let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
+
+  let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
+
+  let program_info = ProgramInfo::new(&gl_context)?;
+
+  let buffers = buffers::make_buffers(&gl_context)?;
+
+  draw_scene(&gl_context, &program_info, &buffers)?;
+
+  Ok(())
 }
