@@ -1,3 +1,4 @@
+use js_sys::{Array, Date};
 use nalgebra_glm;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast};
@@ -123,18 +124,18 @@ fn create_model_view_matrix(angle: f32) -> [f32; 16] {
 }
 
 pub fn window() -> web_sys::Window {
-  web_sys::window().expect("Global `window` dne")
+  web_sys::window().expect("Error. `window` is not in this context.")
 }
 
 pub fn request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
   window()
     .request_animation_frame(f.as_ref().unchecked_ref())
-    .expect("Should register `request_animation_frame` ok");
+    .expect("Error. Did not register `RequestAnimationFrame`");
 }
 
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
-  let document = window().document().expect("`document` dne");
+  let document = window().document().expect("Error. `window` does not have a `document`.");
 
   let canvas = document.get_element_by_id("canvas").unwrap();
   let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
