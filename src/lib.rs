@@ -85,6 +85,9 @@ pub fn draw_scene(
     model_view_matrix,
   );
 
+  gl_context
+    .uniform1f(program_info.uniform_locations.get(&"u_time".to_string()).unwrap().as_ref(), time);
+
   let vertex_count = 4;
   let offset = 0; // How many bytes inside the buffer to start from
   gl_context.draw_arrays(WebGl2RenderingContext::TRIANGLE_STRIP, offset, vertex_count);
@@ -141,9 +144,10 @@ pub fn start() -> Result<(), JsValue> {
 
   let buffers = buffers::make_buffers(&gl_context)?;
 
-  // Draw scene every second
+  // Draw scene every 0.01 seconds
   let ref_count = Rc::new(RefCell::new(None));
   let ref_count_clone = ref_count.clone();
+
   *ref_count_clone.borrow_mut() = Some(Closure::wrap(Box::new(move |t| {
     draw_scene(&gl_context.clone(), program_info.clone(), buffers.clone(), t * 0.001f32).unwrap();
     request_animation_frame(ref_count.borrow().as_ref().unwrap());

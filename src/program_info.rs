@@ -19,9 +19,10 @@ const VERT_SOURCE: &str = r#"
 
 const FRAG_SOURCE: &str = r#"
     varying lowp vec4 v_color;
+    uniform lowp float u_time;
 
     void main() {
-      gl_FragColor = v_color;
+      gl_FragColor = v_color * vec4(vec3(abs(sin(u_time)) + 0.3), 1.0);
     }
 "#;
 
@@ -56,6 +57,8 @@ impl ProgramInfo {
       "u_projection_matrix".into(),
       gl_context.get_uniform_location(&shader_program, "u_projection_matrix"),
     );
+    uniform_locations
+      .insert("u_time".into(), gl_context.get_uniform_location(&shader_program, "u_time"));
 
     Ok(ProgramInfo { program: shader_program, attrib_locations, uniform_locations })
   }
