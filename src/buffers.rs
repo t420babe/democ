@@ -1,7 +1,7 @@
 use crate::utils::*;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
-use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
+use web_sys::{WebGl2RenderingContext, WebGlBuffer};
 
 pub(crate) fn make_buffers(
   gl_context: &WebGl2RenderingContext,
@@ -38,11 +38,7 @@ fn init_buffer(
   usage: u32,
 ) -> Result<WebGlBuffer, String> {
   // Create a buffer for the square's positions
-  let buffer = gl_context.create_buffer().ok_or({
-    let msg = "Failed to create position buffer";
-    console::log_1(&msg.into());
-    msg
-  })?;
+  let buffer = gl_context.create_buffer().ok_or("Failed to create position buffer")?;
 
   // Select the `vertices_buffer` as the on to apply buffer operations from here on out
   gl_context.bind_buffer(target, Some(&buffer));

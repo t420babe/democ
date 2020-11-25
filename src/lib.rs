@@ -1,5 +1,5 @@
 use nalgebra_glm;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast};
 use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 
@@ -11,8 +11,9 @@ use crate::{buffer_attrib::BufferAttrib, program_info::ProgramInfo, utils::*};
 
 pub fn draw_scene(
   gl_context: &WebGl2RenderingContext,
-  program_info: &ProgramInfo,
-  buffers: &HashMap<String, WebGlBuffer>,
+  program_info: ProgramInfo,
+  buffers: HashMap<String, WebGlBuffer>,
+  time: f32,
 ) -> Result<(), JsValue> {
   gl_context.clear_color(1.0, 0.5, 0.5, 1.0);
   // gl_context.clear_depth(0.0);
@@ -25,23 +26,19 @@ pub fn draw_scene(
 
   // Projection and model view matrices
   let projection_matrix = create_perspective_matrix(&gl_context)?;
-  let model_view_matrix = create_model_view_matrix(0.5);
+  let model_view_matrix = create_model_view_matrix(time);
 
   // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
-  let a_vertex_position =
-    (*program_info.attrib_locations.get(&"a_vertex_position".to_string()).ok_or({
-      let msg = "Failed to get `a_vertex_position` attribute";
-      console::log_1(&msg.into());
-      msg
-    })?) as u32;
+  let a_vertex_position = (*program_info
+    .attrib_locations
+    .get(&"a_vertex_position".to_string())
+    .ok_or("Failed to get `a_vertex_position` attribute")?) as u32;
 
   let a_vertex_position_buffer_attrib = BufferAttrib {
     name: "vertices".into(),
-    buffer: buffers.get(&"vertices".to_string()).ok_or({
-      let msg = "Failed to get `a_vertex_position` attribute";
-      console::log_1(&msg.into());
-      msg
-    })?,
+    buffer: buffers
+      .get(&"vertices".to_string())
+      .ok_or("Failed to get `a_vertex_position` attribute")?,
     target: WebGl2RenderingContext::ARRAY_BUFFER,
     num_components: 2,
     buffer_type: WebGl2RenderingContext::FLOAT,
@@ -55,19 +52,13 @@ pub fn draw_scene(
     a_vertex_position,
   )?;
 
-  let a_vertex_color =
-    (*program_info.attrib_locations.get(&"a_vertex_color".to_string()).ok_or({
-      let msg = "Failed to get `a_vertex_color` attribute";
-      console::log_1(&msg.into());
-      msg
-    })?) as u32;
+  let a_vertex_color = (*program_info
+    .attrib_locations
+    .get(&"a_vertex_color".to_string())
+    .ok_or("Failed to get `a_vertex_color` attribute")?) as u32;
   let a_vertex_color_buffer_attrib = BufferAttrib {
     name: "colors".into(),
-    buffer: buffers.get(&"colors".to_string()).ok_or({
-      let msg = "Failed to get `a_vertex_color` attribute";
-      console::log_1(&msg.into());
-      msg
-    })?,
+    buffer: buffers.get(&"colors".to_string()).ok_or("Failed to get `a_vertex_color` attribute")?,
     target: WebGl2RenderingContext::ARRAY_BUFFER,
     num_components: 4,
     buffer_type: WebGl2RenderingContext::FLOAT,
@@ -108,11 +99,7 @@ fn create_perspective_matrix(gl_context: &WebGl2RenderingContext) -> Result<[f32
   let field_of_view = 45.0 * std::f32::consts::PI / 180.0;
   let canvas: web_sys::HtmlCanvasElement = gl_context
     .canvas()
-    .ok_or({
-      let msg = "Failed to get canvas on draw";
-      console::log_1(&msg.into());
-      msg
-    })?
+    .ok_or("Failed to get canvas on draw")?
     .dyn_into::<web_sys::HtmlCanvasElement>()?;
   let aspect = (canvas.client_width() / canvas.client_height()) as f32;
   let z_near = 0.1;
@@ -131,9 +118,19 @@ fn create_model_view_matrix(angle: f32) -> [f32; 16] {
   mat4_to_f32_16(rotated_matrix)
 }
 
+pub fn window() -> web_sys::Window {
+  web_sys::window().expect("Global `window` dne")
+}
+
+pub fn request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
+  window()
+    .request_animation_frame(f.as_ref().unchecked_ref())
+    .expect("Should register `request_animation_frame` ok");
+}
+
 #[wasm_bindgen(start)]
 pub fn start() -> Result<(), JsValue> {
-  let document = web_sys::window().unwrap().document().unwrap();
+  let document = window().document().expect("`document` dne");
 
   let canvas = document.get_element_by_id("canvas").unwrap();
   let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
@@ -144,7 +141,15 @@ pub fn start() -> Result<(), JsValue> {
 
   let buffers = buffers::make_buffers(&gl_context)?;
 
-  draw_scene(&gl_context, &program_info, &buffers)?;
+  // Draw scene every second
+  let ref_count = Rc::new(RefCell::new(None));
+  let ref_count_clone = ref_count.clone();
+  *ref_count_clone.borrow_mut() = Some(Closure::wrap(Box::new(move |t| {
+    draw_scene(&gl_context.clone(), program_info.clone(), buffers.clone(), t * 0.001f32).unwrap();
+    request_animation_frame(ref_count.borrow().as_ref().unwrap());
+  }) as Box<dyn FnMut(f32)>));
+
+  request_animation_frame(ref_count_clone.borrow().as_ref().unwrap());
 
   Ok(())
 }

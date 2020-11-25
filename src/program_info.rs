@@ -25,6 +25,7 @@ const FRAG_SOURCE: &str = r#"
     }
 "#;
 
+#[derive(Clone)]
 pub struct ProgramInfo {
   pub program: WebGlProgram,
   pub attrib_locations: HashMap<String, i32>,
