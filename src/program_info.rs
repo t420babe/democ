@@ -22,7 +22,7 @@ const FRAG_SOURCE: &str = r#"
     uniform lowp float u_time;
 
     void main() {
-      gl_FragColor = v_color * vec4(vec3(abs(sin(u_time)) + 0.3), 1.0);
+      gl_FragColor = v_color * vec4(vec3(abs(sin(u_time * 0.5))), 1.0);
     }
 "#;
 

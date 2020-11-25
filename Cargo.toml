@@ -26,6 +26,13 @@ features = [
   'WebGlShader',
   'WebGlUniformLocation',
   'Window',
+  'AudioContext',
+  'AudioDestinationNode',
+  'AudioNode',
+  'AudioParam',
+  'GainNode',
+  'OscillatorNode',
+  'OscillatorType',
 ]
 
 [profile.release]

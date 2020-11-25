@@ -1,8 +1,9 @@
 use nalgebra_glm;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast};
-use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
+use web_sys::{AudioContext, OscillatorType, WebGl2RenderingContext, WebGlBuffer};
 
+mod audio;
 mod buffer_attrib;
 mod buffers;
 mod program_info;
