@@ -1,3 +1,4 @@
+import('./style.css')
 import('./pkg')
 .then(rust_module => {
   let fm = null;
