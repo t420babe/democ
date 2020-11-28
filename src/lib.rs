@@ -1,7 +1,10 @@
 use nalgebra_glm;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast};
-use web_sys::{WebGl2RenderingContext, WebGlBuffer};
+use web_sys::{
+  console, AudioContext, EventTarget, HtmlCanvasElement, HtmlMediaElement, WebGl2RenderingContext,
+  WebGlBuffer,
+};
 
 mod buffer_attrib;
 mod buffers;
@@ -101,7 +104,7 @@ fn create_perspective_matrix(gl_context: &WebGl2RenderingContext) -> Result<[f32
   // Our field of view is 45 degrees, which a width/height ratio that matches the display size of the canvas and we
   // only want to see objects between 0.1 and 100.0 units away from the camera
   let field_of_view = 45.0 * std::f32::consts::PI / 180.0;
-  let canvas: web_sys::HtmlCanvasElement = gl_context
+  let canvas: HtmlCanvasElement = gl_context
     .canvas()
     .ok_or("Failed to get canvas on draw")?
     .dyn_into::<web_sys::HtmlCanvasElement>()?;
@@ -132,14 +135,8 @@ pub fn request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
     .expect("Error. Did not register `RequestAnimationFrame`");
 }
 
-#[wasm_bindgen(start)]
-pub fn start() -> Result<(), JsValue> {
-  let document = window().document().expect("Error. `window` does not have a `document`.");
-
-  let canvas = document.get_element_by_id("canvas").unwrap();
-  let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
-
-  let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
+fn do_webgl(gl_context: WebGl2RenderingContext) -> Result<(), JsValue> {
+  /* WebGl */
 
   let program_info = ProgramInfo::new(&gl_context)?;
 
@@ -155,6 +152,47 @@ pub fn start() -> Result<(), JsValue> {
   }) as Box<dyn FnMut(f32)>));
 
   request_animation_frame(ref_count_clone.borrow().as_ref().unwrap());
+
+  Ok(())
+}
+
+#[wasm_bindgen(start)]
+pub fn start() -> Result<(), JsValue> {
+  let document = window().document().expect("Error. `window` does not have a `document`.");
+  let canvas = document.get_element_by_id("canvas").unwrap();
+  let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>()?;
+
+  /* WebAudio */
+  let audio_context = AudioContext::new()?;
+  // Get the audio element
+  let audio_element = document
+    .get_element_by_id("audio-src")
+    .ok_or("Failed to get audio element on draw")?
+    .dyn_into::<HtmlMediaElement>()?;
+
+  // Pass it into the audio context to create the audio node. Get source element and pipe it into
+  // the `audio_context`.
+  let track = audio_context.create_media_element_source(&audio_element)?;
+  // Connect the audio node to the audio graph. Do not need to create an output node.
+  track.connect_with_audio_node(&audio_context.destination())?;
+
+  // Add pause and play functionality using an event listener
+  let play_button = document
+    .get_element_by_id("play-pause")
+    .ok_or("Failed to get play button element on draw")?
+    .dyn_into::<web_sys::HtmlButtonElement>()?;
+
+  let event_target: EventTarget = play_button.into();
+  let click_closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
+    console::log_1(&4.into());
+  }) as Box<dyn FnMut(web_sys::MouseEvent)>);
+  event_target
+    .add_event_listener_with_callback("click", click_closure.as_ref().unchecked_ref())
+    .unwrap();
+  click_closure.forget();
+
+  let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
+  do_webgl(gl_context)?;
 
   Ok(())
 }

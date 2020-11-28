@@ -16,10 +16,20 @@ wasm-bindgen = "0.2.68"
 [dependencies.web-sys]
 version = "0.3.45"
 features = [
+  'AudioNode',
+  'CanvasRenderingContext2d',
   'console',
   'Document',
   'Element',
+  'EventListener',
+  'EventTarget',
+  'HtmlElement',
+  'HtmlButtonElement',
   'HtmlCanvasElement',
+  'HtmlMediaElement',
+  'HtmlParagraphElement',
+  'MediaElementAudioSourceNode',
+  'MouseEvent',
   'WebGlBuffer',
   'WebGl2RenderingContext',
   'WebGlProgram',

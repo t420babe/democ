@@ -7,32 +7,20 @@
   <body>
     <h1>t420babe demo core</h1>
 
-    <p id="controls">
-      <input type="button" id="start-button" value="start">
-      &nbsp;&nbsp;
-      <input type="button" id="stop-button" value="stop">
-      <p id="msg"></p>
-    </p>
+    <audio id="audio-src" src="./02-fade.mp3"></audio>
+    <div>
+    <!-- <button id="buttontest" data-playing="false" role="switch" aria-checked="false"> -->
+    <button id="play-pause">
+      <span>Play/Pause</span>
+    </button>
+    </div>
 
+
+    <!-- DONT DELETE THIS BEGIN -->
     <div>
       <canvas id="canvas" height="500" width="500" />
     </div>
+    <!-- DONT DELETE THIS END -->
 
-    <div>
-      <input id="play" type="button" value="p"/>
-
-      <div>
-        Primary frequency: <input type="range" min="30" max="80" value="50" style="width: 400px" id="primary-input"/>
-      </div>
-
-      <div>
-        Modulation frequency: <input type="range" min="0" max="3" value="0" step="0.05" style="width: 400px" id="fm-freq"/>
-      </div>
-
-      <div>
-        Modulation amount: <input type="range" min="0" max="3" value="0" step="0.05" style="width: 400px" id="fm-amount"/>
-      </div>
-
-    </div>
   </body>
 </html>
