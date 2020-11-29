@@ -16,13 +16,19 @@ wasm-bindgen = "0.2.68"
 [dependencies.web-sys]
 version = "0.3.45"
 features = [
+  'AudioContext',
+  'AudioContextState',
+  'AudioDestinationNode',
+  'AudioParam',
   'AudioNode',
   'CanvasRenderingContext2d',
   'console',
   'Document',
+  'DomStringMap',
   'Element',
   'EventListener',
   'EventTarget',
+  'GainNode',
   'HtmlElement',
   'HtmlButtonElement',
   'HtmlCanvasElement',
@@ -30,19 +36,15 @@ features = [
   'HtmlParagraphElement',
   'MediaElementAudioSourceNode',
   'MouseEvent',
+  'OscillatorNode',
+  'OscillatorType',
+  'TrackEvent',
   'WebGlBuffer',
   'WebGl2RenderingContext',
   'WebGlProgram',
   'WebGlShader',
   'WebGlUniformLocation',
   'Window',
-  'AudioContext',
-  'AudioDestinationNode',
-  'AudioNode',
-  'AudioParam',
-  'GainNode',
-  'OscillatorNode',
-  'OscillatorType',
 ]
 
 [profile.release]

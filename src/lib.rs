@@ -180,16 +180,57 @@ pub fn start() -> Result<(), JsValue> {
   let play_button = document
     .get_element_by_id("play-pause")
     .ok_or("Failed to get play button element on draw")?
-    .dyn_into::<web_sys::HtmlButtonElement>()?;
+    .dyn_into::<web_sys::HtmlElement>()?;
 
-  let event_target: EventTarget = play_button.into();
-  let click_closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
-    console::log_1(&4.into());
-  }) as Box<dyn FnMut(web_sys::MouseEvent)>);
-  event_target
-    .add_event_listener_with_callback("click", click_closure.as_ref().unchecked_ref())
-    .unwrap();
-  click_closure.forget();
+  let play_button_event_target = play_button.clone();
+  let play_button_event_target: EventTarget = play_button_event_target.into();
+  {
+    let audio_element = audio_element.clone();
+    // let audio_element = audio_element.clone();
+    let play_button = play_button.clone();
+    let click_closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
+      console::log_1(&4.into());
+      console::log_1(&5.into());
+      // Check if context is in suspended state (autoplay policy)
+      if audio_context.state() == web_sys::AudioContextState::Suspended {
+        console::log_1(&"audio suspended".into());
+        audio_context.resume(); // RR TODO: HANDLE RESULT LADY
+      } else {
+        console::log_1(&"audio NOT suspended".into());
+      }
+
+      // Play or pause track depending on state
+      let playing = &play_button
+        .dataset()
+        .get("playing")
+        .ok_or("`playing` not found in `play_button` dataset")
+        .unwrap();
+      if playing == "false" {
+        audio_element.play(); // RR TODO: HANDLE RESULT LADY
+        &play_button.dataset().set("playing", "true").unwrap();
+        console::log_1(&"Playing".into());
+      } else if playing == "true" {
+        audio_element.pause(); // RR TODO: HANDLE RESULT LADY
+        &play_button.dataset().set("playing", "false").unwrap();
+        console::log_1(&"Paused".into());
+      }
+    }) as Box<dyn FnMut(web_sys::MouseEvent)>);
+    play_button_event_target
+      .add_event_listener_with_callback("click", click_closure.as_ref().unchecked_ref())
+      .unwrap();
+    click_closure.forget();
+  }
+
+  // When track is done playing, set `playing` in `play_button` dataset to false indicating nothing
+  // is playing.
+  {
+    let audio_element = audio_element.clone();
+    let play_button = play_button.clone();
+    let audio_end_closure = Closure::wrap(Box::new(move |_event: web_sys::TrackEvent| {
+      &play_button.dataset().set("playing", "false").unwrap();
+      console::log_1(&"Song ended".into());
+    }) as Box<dyn FnMut(web_sys::TrackEvent)>);
+  }
 
   let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
   do_webgl(gl_context)?;
