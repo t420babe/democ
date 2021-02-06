@@ -1,7 +1,7 @@
 use crate::utils::*;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
-use web_sys::{WebGl2RenderingContext, WebGlBuffer};
+use web_sys::{console, WebGl2RenderingContext, WebGlBuffer};
 
 pub(crate) fn make_buffers(
   gl_context: &WebGl2RenderingContext,
@@ -12,7 +12,7 @@ pub(crate) fn make_buffers(
   let usage = WebGl2RenderingContext::STATIC_DRAW;
 
   // Create an array of position vertices for the square
-  let position_vertices = vec![-1.0, 1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0];
+  let position_vertices = vec![-3.0, 3.0, 3.0, 3.0, -3.0, -3.0, 3.0, -3.0];
 
   // Create an array of color vertices for the square
   let color_vertices = vec![
@@ -38,7 +38,11 @@ fn init_buffer(
   usage: u32,
 ) -> Result<WebGlBuffer, String> {
   // Create a buffer for the square's positions
-  let buffer = gl_context.create_buffer().ok_or("Failed to create position buffer")?;
+  let buffer = gl_context.create_buffer().ok_or({
+    let msg = "Failed to create position buffer";
+    console::log_1(&msg.into());
+    msg
+  })?;
 
   // Select the `vertices_buffer` as the on to apply buffer operations from here on out
   gl_context.bind_buffer(target, Some(&buffer));

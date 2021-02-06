@@ -9,36 +9,25 @@ crate-type = ["cdylib"]
 
 [dependencies]
 js-sys = "0.3.45"
+wasm-bindgen = "0.2.70"
+wasm-bindgen-futures = "0.4.20"
 mat4 = "0.2.1"
-nalgebra-glm = "0.3"
-wasm-bindgen = "0.2.68"
 
 [dependencies.web-sys]
 version = "0.3.45"
 features = [
+  'AnalyserNode',
   'AudioContext',
-  'AudioContextState',
-  'AudioDestinationNode',
-  'AudioParam',
-  'AudioNode',
-  'CanvasRenderingContext2d',
   'console',
   'Document',
-  'DomStringMap',
   'Element',
-  'EventListener',
-  'EventTarget',
-  'GainNode',
-  'HtmlElement',
-  'HtmlButtonElement',
   'HtmlCanvasElement',
-  'HtmlMediaElement',
-  'HtmlParagraphElement',
-  'MediaElementAudioSourceNode',
-  'MouseEvent',
-  'OscillatorNode',
-  'OscillatorType',
-  'TrackEvent',
+  'MediaDevices',
+  'MediaStream',
+  'MediaStreamAudioSourceNode',
+  'MediaStreamConstraints',
+  'MediaTrackConstraints',
+  'Navigator',
   'WebGlBuffer',
   'WebGl2RenderingContext',
   'WebGlProgram',

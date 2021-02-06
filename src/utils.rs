@@ -27,15 +27,3 @@ where
   };
   array
 }
-
-pub(crate) fn mat4_to_f32_16<T: 'static>(v: nalgebra_glm::TMat4<T>) -> [T; 16]
-where
-  T: Copy + PartialEq + std::fmt::Debug,
-{
-  let slice = v.as_slice();
-  let array: [T; 16] = match slice.try_into() {
-    Ok(ba) => ba,
-    Err(_) => panic!("Expected"),
-  };
-  array
-}
