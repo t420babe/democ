@@ -12,10 +12,14 @@ js-sys = "0.3.45"
 mat4 = "0.2.1"
 nalgebra-glm = "0.3"
 wasm-bindgen = "0.2.68"
+wasm-bindgen-futures = "0.4.21"
 
 [dependencies.web-sys]
 version = "0.3.45"
 features = [
+  'AnalyserNode',
+  'AudioBuffer',
+  'AudioBufferOptions',
   'AudioContext',
   'AudioContextState',
   'AudioDestinationNode',
@@ -35,7 +39,12 @@ features = [
   'HtmlMediaElement',
   'HtmlParagraphElement',
   'MediaElementAudioSourceNode',
+  'MediaDevices',
+  'MediaStream',
+  'MediaStreamAudioSourceNode',
+  'MediaStreamConstraints',
   'MouseEvent',
+  'Navigator',
   'OscillatorNode',
   'OscillatorType',
   'TrackEvent',

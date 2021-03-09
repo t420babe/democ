@@ -1,3 +1,4 @@
+use super::*;
 use crate::{
   buffer_attrib, buffer_attrib::BufferAttrib, buffers, program_info::ProgramInfo, utils::*,
 };
@@ -119,12 +120,6 @@ fn create_model_view_matrix(angle: f32) -> [f32; 16] {
   let rotation_vector = nalgebra_glm::vec3(0.0, 0.0, 1.0);
   let rotated_matrix = nalgebra_glm::rotate(&translated_matrix, angle, &rotation_vector);
   mat4_to_f32_16(rotated_matrix)
-}
-
-pub fn request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
-  super::window()
-    .request_animation_frame(f.as_ref().unchecked_ref())
-    .expect("Error. Did not register `RequestAnimationFrame`");
 }
 
 pub(crate) fn do_webgl(gl_context: WebGl2RenderingContext) -> Result<(), JsValue> {
