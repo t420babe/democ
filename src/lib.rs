@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-  console, AudioContext, EventTarget, HtmlCanvasElement, HtmlMediaElement, WebGl2RenderingContext,
+  console, AudioContext, Document, Window, EventTarget, HtmlCanvasElement, HtmlMediaElement, WebGl2RenderingContext,
   WebGlBuffer,
   AnalyserNode,
 };
@@ -15,8 +15,21 @@ mod shaders;
 mod utils;
 use crate::{buffer_attrib::BufferAttrib, program_info::ProgramInfo, utils::*};
 
-pub fn window() -> web_sys::Window {
+/// Get Window in context
+pub fn window() -> Window {
   web_sys::window().expect("Error. `window` is not in this context.")
+}
+
+/// Get Document in Window
+pub fn document() -> Document {
+  window().document().expect("Error. `document` is not in this `window`.")
+}
+
+/// Get Canvas in Document
+pub fn canvas() -> Result<HtmlCanvasElement, JsValue> {
+  let canvas = document().get_element_by_id("canvas").expect("Error. `canvas` is not in this `document`.");
+
+  Ok(canvas.dyn_into::<HtmlCanvasElement>()?)
 }
 
 pub fn request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
@@ -39,7 +52,6 @@ async fn audio() -> Result<(), JsValue> {
   &media_stream_constraints.video(&JsValue::FALSE);
   let stream_promise = navigator.media_devices()?.get_user_media_with_constraints(&media_stream_constraints)?;
   let stream: web_sys::MediaStream = JsFuture::from(stream_promise).await?.dyn_into()?;
-  // console::log_1(&stream);
 
   // Buffer to hold fft data
   let kMaxFrequency = 20000;
@@ -47,10 +59,7 @@ async fn audio() -> Result<(), JsValue> {
   let fft_size = node.fft_size() / 2;
   let buffer_size = (kMaxFrequency / sample_rate * fft_size) as usize;
   let buffer_size: usize = 16;
-  // console::log_1(&(buffer_size as u32).into());
   let mut buffer = vec![0; buffer_size];
-  let js_buff = js_sys::Uint8Array::new_with_length(buffer_size as u32);
-  // console::log_1(&(js_buff).into());
   let arr = js_sys::Array::new();
   &arr.set(4, JsValue::from_f64(1.0));
 
@@ -64,8 +73,6 @@ async fn audio() -> Result<(), JsValue> {
   let ref_count_clone = ref_count.clone();
 
   *ref_count_clone.borrow_mut() = Some(Closure::wrap(Box::new(move |t| {
-    let msg = "RACHEL audio";
-    // console::log_1(&msg.into());
     let buf = buffer.clone();
     draw_loop(&node, buf);
     request_animation_frame(ref_count.borrow().as_ref().unwrap());
@@ -86,11 +93,9 @@ fn draw_loop(node: &AnalyserNode, mut buffer: Vec<u8>) -> Result<(), JsValue> {
 
 #[wasm_bindgen(start)]
 pub async fn start() -> Result<(), JsValue> {
-  let document = window().document().expect("Error. `window` does not have a `document`.");
+  let document = document();
+  let canvas = canvas()?;
   audio().await?;
-
-  let canvas = document.get_element_by_id("canvas").unwrap();
-  let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>()?;
 
   let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
   shaders::do_webgl(gl_context)?;
