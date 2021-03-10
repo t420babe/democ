@@ -13,6 +13,7 @@ mod buffers;
 mod program_info;
 mod shaders;
 mod utils;
+mod web;
 use crate::{buffer_attrib::BufferAttrib, program_info::ProgramInfo, utils::*};
 
 /// Get Window in context
@@ -95,10 +96,15 @@ fn draw_loop(node: &AnalyserNode, mut buffer: Vec<u8>) -> Result<(), JsValue> {
 pub async fn start() -> Result<(), JsValue> {
   let document = document();
   let canvas = canvas()?;
-  audio().await?;
 
+  let audio_context = web_sys::AudioContext::new()?;
   let gl_context = canvas.get_context("webgl2")?.unwrap().dyn_into::<WebGl2RenderingContext>()?;
-  shaders::do_webgl(gl_context)?;
+
+  web::run(audio_context, gl_context).await?;
+
+
+  // shaders::do_webgl(gl_context)?;
+  // audio().await?;
 
   Ok(())
 }

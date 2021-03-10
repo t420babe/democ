@@ -1,21 +1,26 @@
-use super::*;
-use crate::{
-  buffer_attrib, buffer_attrib::BufferAttrib, buffers, program_info::ProgramInfo, utils::*,
-};
-use nalgebra_glm;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::{prelude::*, JsCast};
+use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-  console, AudioContext, EventTarget, HtmlCanvasElement, HtmlMediaElement, WebGl2RenderingContext,
+  console, AudioContext, HtmlCanvasElement, HtmlMediaElement, WebGl2RenderingContext,
   WebGlBuffer,
+  AnalyserNode,
+};
+use crate::{
+  shaders, buffer_attrib, buffer_attrib::BufferAttrib, buffers, program_info::ProgramInfo, utils::*,
 };
 
-pub fn draw_scene(
+fn draw_loop(node: &AnalyserNode, mut buffer: Vec<u8>, 
   gl_context: &WebGl2RenderingContext,
   program_info: ProgramInfo,
   buffers: HashMap<String, WebGlBuffer>,
   time: f32,
-) -> Result<(), JsValue> {
+  ) -> Result<(), JsValue> {
+  // WebAudio
+  &node.get_byte_frequency_data(&mut buffer);
+  // web_sys::console::log(&super::vec_to_js_array(buffer));
+
+  // WebGL
   gl_context.clear_color(1.0, 0.5, 0.5, 1.0);
   // gl_context.clear_depth(0.0);
   gl_context.enable(WebGl2RenderingContext::DEPTH_TEST);
@@ -26,8 +31,8 @@ pub fn draw_scene(
     .clear(WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT);
 
   // Projection and model view matrices
-  let projection_matrix = create_perspective_matrix(&gl_context)?;
-  let model_view_matrix = create_model_view_matrix(time);
+  let projection_matrix = shaders::create_perspective_matrix(&gl_context)?;
+  let model_view_matrix = shaders::create_model_view_matrix(time);
 
   // Tell WebGl to pull out the positions from the vertices buffer into the `a_vertex_position` attribute
   let a_vertex_position = (*program_info
@@ -95,43 +100,31 @@ pub fn draw_scene(
   let vertex_count = 4;
   let offset = 0; // How many bytes inside the buffer to start from
   gl_context.draw_arrays(WebGl2RenderingContext::TRIANGLE_STRIP, offset, vertex_count);
-
   Ok(())
 }
 
-pub(crate) fn create_perspective_matrix(
-  gl_context: &WebGl2RenderingContext,
-) -> Result<[f32; 16], JsValue> {
-  // Create a perspective matrix, a special matrix that is used to simulate the distortion of perspective in a camera.
-  // Our field of view is 45 degrees, which a width/height ratio that matches the display size of the canvas and we
-  // only want to see objects between 0.1 and 100.0 units away from the camera
-  let field_of_view = 45.0 * std::f32::consts::PI / 180.0;
-  let canvas: HtmlCanvasElement = gl_context
-    .canvas()
-    .ok_or("Failed to get canvas on draw")?
-    .dyn_into::<web_sys::HtmlCanvasElement>()?;
-  let aspect = (canvas.client_width() / canvas.client_height()) as f32;
-  let z_near = 0.1;
-  let z_far = 100.0;
-  let projection_matrix = nalgebra_glm::perspective(aspect, field_of_view, z_near, z_far);
-  Ok(mat4_to_f32_16(projection_matrix))
-}
+pub(crate) async fn run(audio_context: AudioContext, gl_context: WebGl2RenderingContext) -> Result<(), JsValue> {
+  // Setup WebAudio
+  let node = audio_context.create_analyser()?;
+  let navigator = &super::window().navigator();
+  let mut media_stream_constraints = web_sys::MediaStreamConstraints::new();
+  &media_stream_constraints.audio(&JsValue::TRUE);
+  &media_stream_constraints.video(&JsValue::FALSE);
+  let stream_promise = navigator.media_devices()?.get_user_media_with_constraints(&media_stream_constraints)?;
+  let stream: web_sys::MediaStream = JsFuture::from(stream_promise).await?.dyn_into()?;
 
-/// Rotate the square
-pub(crate) fn create_model_view_matrix(angle: f32) -> [f32; 16] {
-  let model_view_matrix = nalgebra_glm::identity();
-  let translation_vector = nalgebra_glm::vec3(0.0, 0.0, -6.0);
-  let translated_matrix = nalgebra_glm::translate(&model_view_matrix, &translation_vector);
-  let rotation_vector = nalgebra_glm::vec3(0.0, 0.0, 1.0);
-  let rotated_matrix = nalgebra_glm::rotate(&translated_matrix, angle, &rotation_vector);
-  mat4_to_f32_16(rotated_matrix)
-}
+  // Buffer to hold fft data
+  let kMaxFrequency = 20000.0f32;
+  let sample_rate = audio_context.sample_rate() as f32;
+  let fft_size = (node.fft_size() / 2) as f32;   // 1024
+  let audio_buffer_size = (kMaxFrequency / sample_rate* fft_size) as usize;
+  let mut audio_buffer = vec![0; audio_buffer_size];
 
-pub(crate) fn do_webgl(gl_context: WebGl2RenderingContext) -> Result<(), JsValue> {
-  /* WebGl */
+  let audio_node = &audio_context.create_media_stream_source(&stream)?;
+  audio_node.connect_with_audio_node(&node)?;
 
+  // Setup WebGl shaders 
   let program_info = ProgramInfo::new(&gl_context)?;
-
   let buffers = buffers::make_buffers(&gl_context)?;
 
   // Draw scene every 0.01 seconds
@@ -139,11 +132,30 @@ pub(crate) fn do_webgl(gl_context: WebGl2RenderingContext) -> Result<(), JsValue
   let ref_count_clone = ref_count.clone();
 
   *ref_count_clone.borrow_mut() = Some(Closure::wrap(Box::new(move |t| {
-    draw_scene(&gl_context.clone(), program_info.clone(), buffers.clone(), t * 0.001f32).unwrap();
+    let audio_buf = audio_buffer.clone();
+    draw_loop(&node, audio_buf, &gl_context.clone(), program_info.clone(), buffers.clone(), t * 0.001f32);
+
     request_animation_frame(ref_count.borrow().as_ref().unwrap());
   }) as Box<dyn FnMut(f32)>));
 
   request_animation_frame(ref_count_clone.borrow().as_ref().unwrap());
+  Ok(())
+}
+
+// /// Audio draw loop
+// fn draw_loop(node: &AnalyserNode, mut buffer: Vec<u8>) -> Result<(), JsValue> {
+//   &node.get_byte_frequency_data(&mut buffer);
+//   web_sys::console::log(&vec_to_js_array(buffer));
+//   Ok(())
+// }
+
+fn request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
+  super::window()
+    .request_animation_frame(f.as_ref().unchecked_ref())
+    .expect("Error. Did not register `RequestAnimationFrame`");
+}
+
+async fn setup_webaudio(audio_context: AudioContext) -> Result<(), JsValue> {
 
   Ok(())
 }
